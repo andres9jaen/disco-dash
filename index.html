@@ -2,65 +2,24 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<!-- 👇 Vista móvil estable con notch y sin zoom por gestos -->
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>¿Te atreves? – Disco Dash</title>
 <style>
-  /* ======== LAYOUT Y RESPONSIVE (16:9) ======== */
   :root {
     --ui-bg: rgba(0,0,0,0.42); --ui-text:#fff; --accent:#8b5cf6; --accent2:#00ffd5; --danger:#ff4d6d; --gold:#ffd166;
-    /* Safe areas para iOS notch */
     --pad-top: env(safe-area-inset-top, 0px);
     --pad-right: env(safe-area-inset-right, 0px);
     --pad-bottom: env(safe-area-inset-bottom, 0px);
     --pad-left: env(safe-area-inset-left, 0px);
   }
-
-  html, body {
-    height:100%;
-    margin:0;
-    background:#05060c;
-    color:var(--ui-text);
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, "Noto Sans", sans-serif;
-    overflow:hidden;
-  }
-
-  /* Usa 100dvh para evitar “salto” de la barra del navegador en móvil */
-  .root {
-    width:100vw;
-    height:100dvh;
-    display:grid;
-    place-items:center;
-    padding: var(--pad-top) var(--pad-right) var(--pad-bottom) var(--pad-left);
-    box-sizing:border-box;
-  }
-
-  /* El tamaño real lo fijamos por JS para que siempre encaje perfecto */
-  .game-wrap {
-    position:relative;
-    width:100%;
-    height:100%;
-    max-width:100vw;
-    max-height:100dvh;
-    display:grid;
-    place-items:center;
-  }
-
-  .stage {
-    width:100%;
-    height:100%;
-    max-height:100%;
-    aspect-ratio:16/9;            /* Mantener 16:9 */
-    border-radius:16px;
-    overflow:hidden;
-    box-shadow:0 20px 60px rgba(0,0,0,.65), inset 0 0 0 1px rgba(255,255,255,.06);
-    background:transparent;
-    position:relative;
-  }
-
+  html, body { height:100%; margin:0; background:#05060c; color:var(--ui-text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, "Noto Sans", sans-serif; overflow:hidden; }
+  .root { width:100vw; height:100dvh; display:grid; place-items:center; padding: var(--pad-top) var(--pad-right) var(--pad-bottom) var(--pad-left); box-sizing:border-box; }
+  .game-wrap { position:relative; width:100%; height:100%; display:grid; place-items:center; }
+  /* El contenedor .stage ajusta su aspecto según orientación por JS; aquí solo estilos comunes */
+  .stage { width:100%; height:100%; border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.65), inset 0 0 0 1px rgba(255,255,255,.06); position:relative; }
   canvas { width:100%; height:100%; display:block; background:transparent; touch-action:none; }
 
-  /* ======== HUD ======== */
+  /* HUD */
   .hud { position:absolute; left:12px; right:12px; top:10px; display:grid; grid-template-columns:1fr auto; gap:12px; pointer-events:none; }
   .panel { background:var(--ui-bg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:8px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
   .progress { height:10px; border-radius:6px; overflow:hidden; position:relative; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); background: linear-gradient(90deg, rgba(255,255,255,.06), rgba(255,255,255,.02)); }
@@ -69,7 +28,7 @@
   .stats b { color:#d6cbff; }
   .status-tag { padding:4px 10px; border-radius:10px; font-weight:800; letter-spacing:.5px; font-size:12px; background: linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.15)); border:1px solid rgba(255,255,255,.08); }
 
-  /* ======== OVERLAYS (MENÚ / MENSAJES) ======== */
+  /* Overlays */
   .overlay { position:absolute; inset:0; display:grid; place-items:center; text-align:center; padding:24px; pointer-events:none; }
   .overlay .card { pointer-events:auto; padding:18px 22px; border-radius:14px; background: linear-gradient(180deg, rgba(0,0,0,.58), rgba(0,0,0,.32)); border:1px solid rgba(255,255,255,.08); box-shadow:0 24px 64px rgba(0,0,0,.55); max-width:min(92%, 1100px); }
   .title { font-size:clamp(22px, 3.8vw, 44px); margin:8px 0 6px; font-weight:900; letter-spacing:.3px; }
@@ -94,8 +53,7 @@
   .cover { display:block; width:min(86vw, 780px); max-height:48vh; object-fit:cover; border-radius:12px; box-shadow: 0 14px 40px rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.08); margin: 0 auto 8px; }
   .victory-photo, .death-photo { display:block; width:min(86vw, 560px); max-height:40vh; object-fit:cover; border-radius:10px; margin: 8px auto 8px; box-shadow: 0 12px 32px rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.08); }
 
-  /* Mensaje rotación (solo en portrait, opcional) */
-  .rotate-hint { position:absolute; inset:auto auto 10px 10px; background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:6px 10px; font-size:12px; display:none; }
+  .rotate-hint { position:absolute; inset:auto auto 10px 10px; background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:6px 10px; font-size:12px; display:none; pointer-events:none; }
   .rotate-hint.show { display:block; }
 </style>
 </head>
@@ -121,7 +79,7 @@
         <div class="card" id="overlayCard"></div>
       </div>
 
-      <div class="rotate-hint" id="rotateHint">📱 Mejor en horizontal</div>
+      <div class="rotate-hint" id="rotateHint">📱 Juega también en vertical</div>
     </div>
   </div>
 </div>
@@ -129,18 +87,13 @@
 <script>
 (() => {
   'use strict';
-  /* ========================================================
-   *  ¿TE ATREVES? – Disco Dash (index único, sin dependencias externas)
-   *  Canvas 1280×720, 60 fps, controles: TOQUE / Espacio/↑. R reinicia
-   * ======================================================== */
 
-  /* =================== ASSETS / MARCA (SOLO DEV) =================== */
+  /* =================== ASSETS / MARCA =================== */
   const BRAND = {
     GAME_NAME: '¿Te atreves?',
     CHAR_URLS: ['assets/char1.png','assets/char2.png','assets/char3.png','assets/char4.png'],
     COVER_IMAGE_URL: 'assets/cover.png',
     WIN_IMAGE_URL:   'assets/win.png',
-    // 👉 Ahora SOLO 1 escena de derrota (tu petición)
     DEATH_SCENE: { text: 'Nos debes un cubata', img: 'assets/death.png' },
     COVER_EMOJI: '🕺',
     WIN_MESSAGE_BASE: '¡Lo has petado! Nivel completado 🎉',
@@ -148,59 +101,103 @@
     ENABLE_FINAL_MODE: true
   };
 
-  /* ================= PARÁMETROS EDITABLES (TUNING) ================= */
+  /* ================= PARÁMETROS BASE ================= */
   const SETTINGS = {
-    CHAR_W: 96, CHAR_H: 96,             // 👉 más grande y sin cuadrado
-    G: 2550, JUMP_V: -1220,
-    GROUND_Y: 608, PX_PER_M: 32,
-    MAX_AIR_JUMPS: 1,                   // doble salto (total 2)
+    // Estos son valores base de diseño 1280x720 (se escalan con K)
+    CHAR_W_BASE: 96, CHAR_H_BASE: 96,
+    G_BASE: 2550, JUMP_V_BASE: -1220,
+    GROUND_MARGIN_BASE: 112,    // 720 - 608 = 112  → suelo = H - 112*K
+    PX_PER_M_BASE: 32,
+
+    // Doble salto
+    MAX_AIR_JUMPS: 1,
+
+    // Nivel
     LEVEL_LEN: 2000, BASE_SPEED: 7.0, END_SPEED: 15.5, ACCEL_EASE: 1.6,
+
+    // BPM por tramos
     BPM_Q1: 96, BPM_Q2: 114, BPM_Q3: 132, BPM_Q4: 150,
+
+    // Control
     COYOTE: 0.16, JUMP_BUFFER: 0.16,
+
+    // Efectos
     TRAIL_SIZE: 32, TRAIL_INTERVAL: 0.034,
     SHAKE_MAX: 8, SHAKE_DECAY: 3.6,
+
+    // Victoria
     FWAVE: { spawnEvery: 0.60, power: 320, count: 55 },
     CONFETTI: { rate: 36, sizeMin: 6, sizeMax: 14 },
+
+    // Final
     FINAL_LEN: 800, FINAL_BPM: 164, FINAL_BASE_SPEED: 11.0, FINAL_END_SPEED: 16.5
   };
 
   const STATE = { MENU:0, PICK:1, PLAY:2, DEAD:3, WIN:4, FINAL:5, FINAL_WIN:6 };
-
-  // Utils
   const clamp=(v,a,b)=>v<a?a:v>b?b:v; const lerp=(a,b,t)=>a+(b-a)*t; const easeOutPow=(t,p)=>1-Math.pow(1-t,p); const rand=(a,b)=>Math.random()*(b-a)+a; const rndInt=(a,b)=> (Math.random()*(b-a+1)+a)|0;
 
-  // Canvas + DPR scaling
+  // Canvas / viewport
   const stageEl = document.getElementById('stage');
   const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true, willReadFrequently:false });
-  let W = 1280, H = 720; // logical design size
+  const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
+
+  // Mundo lógico dinámico
+  let W = 1280, H = 720;    // se actualiza según orientación
+  let K = 1;                // factor de escala respecto a base 720p
+  let DPR = 1;
+
+  // Variables dependientes de K
+  let PX_PER_M = SETTINGS.PX_PER_M_BASE;
+  let G = SETTINGS.G_BASE, JUMP_V = SETTINGS.JUMP_V_BASE;
+  let groundY = 608;        // recalculado
+  let CHAR_W = SETTINGS.CHAR_W_BASE, CHAR_H = SETTINGS.CHAR_H_BASE;
+
+  function applyScaleDerived() {
+    PX_PER_M = SETTINGS.PX_PER_M_BASE * K;
+    G       = SETTINGS.G_BASE * K;
+    JUMP_V  = SETTINGS.JUMP_V_BASE * Math.sqrt(K); // ajusta salto para mantener “tiempo de aire”
+    groundY = Math.round(H - SETTINGS.GROUND_MARGIN_BASE * K);
+    CHAR_W  = Math.round(SETTINGS.CHAR_W_BASE * K);
+    CHAR_H  = Math.round(SETTINGS.CHAR_H_BASE * K);
+    player.w = CHAR_W; player.h = CHAR_H;
+    // Reposiciona al jugador sobre el “suelo” actualizado
+    if (!player.airborne) player.y = groundY - player.h;
+  }
 
   function fitCanvas() {
     const vp = window.visualViewport || { width: window.innerWidth, height: window.innerHeight };
     const availW = Math.min(window.innerWidth, vp.width);
     const availH = Math.min(window.innerHeight, vp.height);
 
-    // Mantener 16:9 dentro del área disponible (con letterbox si hace falta)
-    const targetAspect = 16/9;
+    const isPortrait = availH > availW;
+
+    // Mundo lógico según orientación:
+    if (isPortrait) { W = 720; H = 1280; }
+    else { W = 1280; H = 720; }
+
+    // CSS size: encajar contenedor .stage al máximo manteniendo aspecto del mundo
+    const targetAspect = W / H;
     let cssW = availW, cssH = availW / targetAspect;
     if (cssH > availH) { cssH = availH; cssW = cssH * targetAspect; }
 
     stageEl.style.width  = cssW + 'px';
     stageEl.style.height = cssH + 'px';
 
-    // Escalar el canvas con DPR para nitidez
-    const dpr = Math.min(window.devicePixelRatio || 1, 3); // límite para rendimiento
-    W = 1280; H = 720; // diseño base
-    canvas.width  = Math.round(W * dpr);
-    canvas.height = Math.round(H * dpr);
+    // DPR para nitidez
+    DPR = Math.min(window.devicePixelRatio || 1, 3);
+    canvas.width  = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
     canvas.style.width  = '100%';
     canvas.style.height = '100%';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-    // Hint rotación en portrait muy estrecho
+    // Factor de escala K relativo a 720p de altura base
+    K = H / 720;
+    applyScaleDerived();
+
+    // Hint no bloquea nada y solo en casos “estrechos”
     const rotateHint = document.getElementById('rotateHint');
-    const isPortrait = availH > availW;
-    rotateHint.classList.toggle('show', isPortrait && availW < 560);
+    rotateHint.classList.toggle('show', isPortrait && availW < 420);
   }
 
   // Evita zoom por doble-tap en iOS
@@ -215,17 +212,16 @@
   const overlay = document.getElementById('overlay'); const overlayCard = document.getElementById('overlayCard'); const progressBar=document.getElementById('progressBar'); const statsEl=document.getElementById('stats'); const statusTag=document.getElementById('statusTag');
 
   // LocalStorage
-  const LS_REC='dd_record_v5', LS_WINS='dd_wins_v5'; let recordDistance=parseFloat(localStorage.getItem(LS_REC)||'0'); let wins=parseInt(localStorage.getItem(LS_WINS)||'0',10);
+  const LS_REC='dd_record_v6', LS_WINS='dd_wins_v6'; let recordDistance=parseFloat(localStorage.getItem(LS_REC)||'0'); let wins=parseInt(localStorage.getItem(LS_WINS)||'0',10);
 
-  // Carga de personajes (PNG)
+  // Sprites
   const charImgs = BRAND.CHAR_URLS.map(u=>{ const im=new Image(); im.decoding='async'; im.loading='eager'; im.src=u; return im; });
   const charReady = [false,false,false,false]; charImgs.forEach((im,i)=>{ im.onload=()=>charReady[i]=true; });
 
   // Estado jugador / mundo
-  const groundY = SETTINGS.GROUND_Y;
-  const player = { x: 260, y: groundY-SETTINGS.CHAR_H, w:SETTINGS.CHAR_W, h:SETTINGS.CHAR_H, vy:0, rotation:0, airborne:false };
-  let chosenChar = 0; // índice 0..3
-  let airJumpsUsed = 0; // doble salto
+  const player = { x: 260, y: 0, w: 0, h: 0, vy:0, rotation:0, airborne:false };
+  let chosenChar = 0;
+  let airJumpsUsed = 0;
 
   // Trail
   const TRAIL_MAX=SETTINGS.TRAIL_SIZE|0; const trail=new Array(TRAIL_MAX); for(let i=0;i<TRAIL_MAX;i++) trail[i]={x:0,y:0,a:0,r:0}; let trailIdx=0, trailTimer=0;
@@ -233,14 +229,14 @@
   // Obstáculos
   const OBS_MAX=260; const obs=new Array(OBS_MAX); for(let i=0;i<OBS_MAX;i++) obs[i]={active:false,type:'glass',x:0,y:0,w:0,h:0,baseY:0,t:0,amp:0};
 
-  // Partículas victoria
+  // Partículas
   const FW_MAX=600, CF_MAX=260; const fw=new Array(FW_MAX); for(let i=0;i<FW_MAX;i++) fw[i]={a:0,x:0,y:0,vx:0,vy:0,life:0,hue:0,sz:0}; const cf=new Array(CF_MAX); for(let i=0;i<CF_MAX;i++) cf[i]={a:0,x:0,y:0,vy:0,vx:0,rot:0,rvel:0,w:0,h:0,hue:0};
 
   // Juego
   let state=STATE.MENU, isFinal=false; let distanceM=0, speedMS=SETTINGS.BASE_SPEED, progress=0, shakeT=0; let lastTime=performance.now();
 
-  // Ritmo / patrones
-  let beatDur=60/SETTINGS.BPM_Q1; // s/beat
+  // Ritmo
+  let beatDur=60/SETTINGS.BPM_Q1;
   const TOK = { S:'S', D:'D', G:'G', B:'B', P:'P', M:'M', V:'V', X:'X', GAP:'_' };
   const PATTERNS = {
     Q1: [ ['_','S','_','X'], ['G','_','_','_'], ['_','B','_','_'], ['_','X','_','S'], ['P','_','_','_'] ],
@@ -252,28 +248,20 @@
   function pickPattern(p){ const q=p<.25?'Q1':p<.5?'Q2':p<.75?'Q3':'Q4'; const list=PATTERNS[q]; return list[rndInt(0,list.length-1)].slice(); }
   let tokenQueue=[]; let beatTimer=0;
 
-  // Entradas: unificadas con Pointer Events (mejor en móvil)
+  // Entradas
   let keyJump=false, keyJumpHeld=false, keyR=false; let coyoteT=0, bufferT=0;
-
   const onJumpPress=()=>{ keyJump=true; keyJumpHeld=true; bufferT=SETTINGS.JUMP_BUFFER; };
   const onJumpRelease=()=>{ keyJumpHeld=false; };
 
-  // Teclado (desktop)
-  window.addEventListener('keydown',e=>{
-    if(e.code==='Space'||e.code==='ArrowUp'){ e.preventDefault(); onJumpPress(); }
-    else if(e.code==='KeyR'){ e.preventDefault(); keyR=true; }
-  },{passive:false});
+  window.addEventListener('keydown',e=>{ if(e.code==='Space'||e.code==='ArrowUp'){ e.preventDefault(); onJumpPress(); } else if(e.code==='KeyR'){ e.preventDefault(); keyR=true; } },{passive:false});
   window.addEventListener('keyup',e=>{ if(e.code==='Space'||e.code==='ArrowUp') onJumpRelease(); });
 
-  // Pointer (móvil/desktop)
   canvas.addEventListener('pointerdown', (e)=>{ e.preventDefault(); onJumpPress(); }, {passive:false});
   window.addEventListener('pointerup', ()=>{ onJumpRelease(); }, {passive:true});
   window.addEventListener('pointercancel', ()=>{ onJumpRelease(); }, {passive:true});
 
-  // Evitar scroll accidental en móvil (gestos en la pantalla)
   ['touchstart','touchmove'].forEach(evt=>{
     document.addEventListener(evt, (e)=>{
-      // Si el toque fue dentro del juego, prevenimos desplazamiento
       if (e.target === canvas || stageEl.contains(e.target)) e.preventDefault();
     }, {passive:false});
   });
@@ -281,7 +269,7 @@
   function reset(toMenu=true){
     state=toMenu?STATE.MENU:STATE.PLAY; isFinal=false; distanceM=0; speedMS=SETTINGS.BASE_SPEED; progress=0; shakeT=0;
     tokenQueue.length=0; beatDur=60/bpmForProgress(0); beatTimer=beatDur; coyoteT=0; bufferT=0; airJumpsUsed=0;
-    player.x=260; player.y=groundY-SETTINGS.CHAR_H; player.w=SETTINGS.CHAR_W; player.h=SETTINGS.CHAR_H; player.vy=0; player.rotation=0; player.airborne=false;
+    player.x=Math.round(260 * K); player.y=groundY-CHAR_H; player.w=CHAR_W; player.h=CHAR_H; player.vy=0; player.rotation=0; player.airborne=false;
     for(let i=0;i<TRAIL_MAX;i++) trail[i].a=0; for(let i=0;i<OBS_MAX;i++) obs[i].active=false; for(let i=0;i<FW_MAX;i++) fw[i].a=0; for(let i=0;i<CF_MAX;i++) cf[i].a=0;
     statusTag.textContent='MENÚ'; showMenu();
   }
@@ -301,7 +289,7 @@
         ${cover}
         <div class="emoji">${BRAND.COVER_EMOJI}</div>
         <div class="title" style="color:#d6cbff; text-shadow:0 0 28px rgba(139,92,246,.5)">${BRAND.GAME_NAME}</div>
-        <div class="subtitle">Toca la pantalla para <b>JUGAR</b>. En partida: <b>tap = salto</b>, <b>doble tap = doble salto</b>. (Tecla <b>R</b> reinicia)</div>
+        <div class="subtitle">Toca para <b>JUGAR</b>. En partida: <b>tap = salto</b>, <b>doble tap = doble salto</b>. (Tecla <b>R</b> reinicia)</div>
         <div class="btns"><button class="btn" id="btnPlay">JUGAR</button></div>
       </div>`);
     document.getElementById('btnPlay').onclick=()=> showPick();
@@ -313,7 +301,7 @@
       <div>
         <div class="title">Elige tu personaje</div>
         <div class="chars" id="chars">${grid}</div>
-        <div class="subtitle">Consejo: el salto tiene <b>doble toque</b> y tiempo coyote.</div>
+        <div class="subtitle">Doble salto y tiempo coyote activos.</div>
         <div class="btns"><button class="btn" id="btnStart" disabled>Empezar</button></div>
       </div>`);
     statusTag.textContent='SELECCIÓN';
@@ -378,7 +366,7 @@
   function doRestart(){ hideOverlay(); reset(true); }
   function startFinal(){ resetFinal(); }
 
-  // ====== Coin draw / flip ======
+  // Coin
   function drawCoin(canvasEl){
     const c=canvasEl.getContext('2d'); const Wc=canvasEl.width, Hc=canvasEl.height; let t=0; let face = rndInt(0,3);
     const render=()=>{ const dt=1/60; t+=dt; c.clearRect(0,0,Wc,Hc); c.save(); c.translate(Wc/2,Hc/2); const flip=Math.abs(Math.cos(t*4)); const sx=lerp(.15,1,flip); c.scale(sx,1);
@@ -388,78 +376,94 @@
     render();
   }
 
-  // ====== Spawner por BEATS ======
+  // ====== Spawner ======
   function nextToken(p){ if(tokenQueue.length===0){ tokenQueue = pickPattern(p); } return tokenQueue.shift(); }
+  function spawnFromToken(tok){
+    const gx=W+20, gy=groundY;
+    switch(tok){
+      case 'S': makeGlass(gx, gy, 56*K, 92*K); break;
+      case 'D': makeGlass(gx, gy, 56*K, 92*K); makeGlass(gx+120*K, gy, 56*K, 96*K); break;
+      case 'G': makeHighGlass(gx, gy); break;
+      case 'B': makeBottle(gx, gy); break;
+      case 'P': makePerson(gx, gy); break;
+      case 'M': makeSpeakerWave(gx, gy); break;
+      case 'V': makeRope(gx, gy); break;
+      case 'X': makeBox(gx, gy); break;
+      default: break;
+    }
+  }
 
-  function spawnFromToken(tok){ const gx=W+20, gy=groundY; switch(tok){
-    case 'S': makeGlass(gx, gy, 56, 92); break;
-    case 'D': makeGlass(gx, gy, 56, 92); makeGlass(gx+120, gy, 56, 96); break;
-    case 'G': makeHighGlass(gx, gy); break;
-    case 'B': makeBottle(gx, gy); break;
-    case 'P': makePerson(gx, gy); break;
-    case 'M': makeSpeakerWave(gx, gy); break;
-    case 'V': makeRope(gx, gy); break;
-    case 'X': makeBox(gx, gy); break;
-    default: break;
-  }}
-
-  // ====== Obstáculos helpers ======
+  // ====== Obstáculos helpers (todos escalados por K) ======
   function allocObs(){ for(let i=0;i<OBS_MAX;i++) if(!obs[i].active) return obs[i]; return obs[0]; }
-  function makeGlass(x,gy,w=56,h=92){ const o=allocObs(); o.type='glass'; o.active=true; o.x=x; o.w=w; o.h=h; o.y=gy-h; o.baseY=o.y; }
-  function makeHighGlass(x,gy){ makeGlass(x,gy,64,112); }
-  function makeBottle(x,gy){ const o=allocObs(); o.type='bottle'; o.active=true; o.x=x; o.w=50; o.h=150; o.y=gy-o.h; o.baseY=o.y; }
-  function makePerson(x,gy){ const o=allocObs(); o.type='person'; o.active=true; o.x=x; o.w=66; o.h=126; o.baseY=gy-o.h-28; o.y=o.baseY; o.amp=28; o.t=rand(0,Math.PI*2); }
-  function makeSpeakerWave(x,gy){ const o=allocObs(); o.type='music'; o.active=true; o.x=x; o.w=70; o.h=110; o.baseY=gy-o.h-40; o.y=o.baseY; o.amp=38; o.t=rand(0,Math.PI*2); }
-  function makeRope(x,gy){ const o=allocObs(); o.type='rope'; o.active=true; o.x=x; o.w=120; o.h=44; o.y=gy-o.h; }
-  function makeBox(x,gy){ const o=allocObs(); o.type='box'; o.active=true; o.x=x; o.w=120; o.h=70; o.y=gy-o.h-26; o.baseY=o.y; }
+  function makeGlass(x,gy,w=56*K,h=92*K){ const o=allocObs(); o.type='glass'; o.active=true; o.x=x; o.w=w|0; o.h=h|0; o.y=gy-o.h; o.baseY=o.y; }
+  function makeHighGlass(x,gy){ makeGlass(x,gy,64*K,112*K); }
+  function makeBottle(x,gy){ const o=allocObs(); o.type='bottle'; o.active=true; o.x=x; o.w=(50*K)|0; o.h=(150*K)|0; o.y=gy-o.h; o.baseY=o.y; }
+  function makePerson(x,gy){ const o=allocObs(); o.type='person'; o.active=true; o.x=x; o.w=(66*K)|0; o.h=(126*K)|0; o.baseY=gy-o.h-(28*K); o.y=o.baseY; o.amp=28*K; o.t=rand(0,Math.PI*2); }
+  function makeSpeakerWave(x,gy){ const o=allocObs(); o.type='music'; o.active=true; o.x=x; o.w=(70*K)|0; o.h=(110*K)|0; o.baseY=gy-o.h-(40*K); o.y=o.baseY; o.amp=38*K; o.t=rand(0,Math.PI*2); }
+  function makeRope(x,gy){ const o=allocObs(); o.type='rope'; o.active=true; o.x=x; o.w=(120*K)|0; o.h=(44*K)|0; o.y=gy-o.h; }
+  function makeBox(x,gy){ const o=allocObs(); o.type='box'; o.active=true; o.x=x; o.w=(120*K)|0; o.h=(70*K)|0; o.y=gy-o.h-(26*K); o.baseY=o.y; }
 
   // ====== Colisiones ======
   const aabb=(px,py,pw,ph,ox,oy,ow,oh)=> (px<ox+ow && px+pw>ox && py<oy+oh && py+ph>oy);
 
   // ====== DIBUJO ======
   function drawBackground(dt,camX){
-    const t=performance.now()/1000; const c1=`hsl(${(t*40)%360} 80% 10%)`; const c2=`hsl(${(t*40+120)%360} 80% 8%)`; const c3=`hsl(${(t*40+240)%360} 80% 6%)`;
+    const t=performance.now()/1000;
+    const c1=`hsl(${(t*40)%360} 80% 10%)`; const c2=`hsl(${(t*40+120)%360} 80% 8%)`; const c3=`hsl(${(t*40+240)%360} 80% 6%)`;
     const sky=ctx.createLinearGradient(0,0,0,H); sky.addColorStop(0,c1); sky.addColorStop(.5,c2); sky.addColorStop(1,c3); ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
     ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.globalAlpha=.25; for(let i=0;i<6;i++){ const y=(Math.sin(t*1.2+i)*.5+.5)*H*.6+H*.1; ctx.fillStyle=`hsl(${(i*60+t*120)%360} 100% 60% / .6)`; ctx.fillRect((i/6)*W, y, W/6, 6); } ctx.restore();
-    const step=64; const scroll=(camX*.2)%step; ctx.save(); ctx.globalAlpha=.22; ctx.strokeStyle='rgba(214,203,255,.18)'; ctx.lineWidth=1; ctx.translate(-scroll,0);
+    const step=64*K; const scroll=(camX*.2)%step; ctx.save(); ctx.globalAlpha=.22; ctx.strokeStyle='rgba(214,203,255,.18)'; ctx.lineWidth=1; ctx.translate(-scroll,0);
     for(let x=0;x<W+step;x+=step){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
     for(let y=0;y<H;y+=step){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); } ctx.restore();
-    const gy=SETTINGS.GROUND_Y; const glow=ctx.createLinearGradient(0,gy-38,0,gy+12); glow.addColorStop(0,'rgba(139,92,246,.22)'); glow.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=glow; ctx.fillRect(0,gy-38,W,50); ctx.fillStyle='#0a0f1a'; ctx.fillRect(0,gy,W,H-gy); ctx.fillStyle='#131b2a'; ctx.fillRect(0,gy-12,W,12);
+
+    const glow=ctx.createLinearGradient(0,groundY-(38*K),0,groundY+(12*K));
+    glow.addColorStop(0,'rgba(139,92,246,.22)'); glow.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=glow; ctx.fillRect(0,groundY-(38*K),W,(50*K));
+    ctx.fillStyle='#0a0f1a'; ctx.fillRect(0,groundY,W,H-groundY);
+    ctx.fillStyle='#131b2a'; ctx.fillRect(0,groundY-(12*K),W,(12*K));
   }
 
+  function roundRect(c,x,y,w,h,r){ const rr=Math.min(r,w/2,h/2); c.beginPath(); c.moveTo(x+rr,y); c.arcTo(x+w,y,x+w,y+h,rr); c.arcTo(x+w,y+h,x,y+h,rr); c.arcTo(x,y+h,x,y,rr); c.arcTo(x,y,x+w,y,rr); c.closePath(); }
+
   function drawObstacle(o){
-    ctx.save(); ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=18; let grad=ctx.createLinearGradient(o.x,o.y,o.x,o.y+o.h); grad.addColorStop(0,'#8b5cf6'); grad.addColorStop(1,'#00ffd5'); ctx.fillStyle=grad; ctx.strokeStyle='rgba(255,255,255,.15)';
+    ctx.save(); ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=18*K; let grad=ctx.createLinearGradient(o.x,o.y,o.x,o.y+o.h); grad.addColorStop(0,'#8b5cf6'); grad.addColorStop(1,'#00ffd5'); ctx.fillStyle=grad; ctx.strokeStyle='rgba(255,255,255,.15)';
     if(o.type==='glass'){
       ctx.beginPath(); ctx.moveTo(o.x, o.y+o.h); ctx.lineTo(o.x+o.w/2, o.y); ctx.lineTo(o.x+o.w, o.y+o.h); ctx.closePath(); ctx.fill(); ctx.stroke();
     } else if(o.type==='bottle'){
-      const neckH=20; ctx.fillRect(o.x+o.w*.35, o.y-neckH, o.w*.3, neckH); ctx.fillRect(o.x, o.y, o.w, o.h); ctx.strokeRect(o.x+.5, o.y+.5, o.w-1, o.h-1);
+      const neckH=20*K; ctx.fillRect(o.x+o.w*.35, o.y-neckH, o.w*.3, neckH); ctx.fillRect(o.x, o.y, o.w, o.h); ctx.strokeRect(o.x+.5, o.y+.5, o.w-1, o.h-1);
     } else if(o.type==='person'){
       const r=o.w*.34; ctx.beginPath(); ctx.arc(o.x+o.w/2, o.y+r, r, 0, Math.PI*2); ctx.fill(); ctx.fillRect(o.x+o.w*.28, o.y+r*2, o.w*.44, o.h-r*2);
     } else if(o.type==='music'){
-      ctx.fillRect(o.x, o.y, o.w, o.h); for(let i=0;i<6;i++){ ctx.fillRect(o.x+i*10, o.y-10, 6, 10); }
+      ctx.fillRect(o.x, o.y, o.w, o.h); for(let i=0;i<6;i++){ ctx.fillRect(o.x+i*(10*K), o.y-(10*K), (6*K), (10*K)); }
     } else if(o.type==='rope'){
-      ctx.fillRect(o.x, o.y+o.h-12, o.w, 12); ctx.beginPath(); ctx.moveTo(o.x+12,o.y+o.h-12); ctx.lineTo(o.x+12,o.y); ctx.moveTo(o.x+o.w-12,o.y+o.h-12); ctx.lineTo(o.x+o.w-12,o.y); ctx.lineWidth=6; ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.stroke();
+      ctx.fillRect(o.x, o.y+o.h-(12*K), o.w, (12*K));
+      ctx.beginPath(); ctx.moveTo(o.x+(12*K),o.y+o.h-(12*K)); ctx.lineTo(o.x+(12*K),o.y);
+      ctx.moveTo(o.x+o.w-(12*K),o.y+o.h-(12*K)); ctx.lineTo(o.x+o.w-(12*K),o.y);
+      ctx.lineWidth=6*K; ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.stroke();
     } else if(o.type==='box'){
-      const r=12; roundRect(ctx, o.x, o.y, o.w, o.h, r); ctx.fill(); ctx.stroke();
+      const r=12*K; roundRect(ctx, o.x, o.y, o.w, o.h, r); ctx.fill(); ctx.stroke();
     } else { ctx.fillRect(o.x, o.y, o.w, o.h); }
     ctx.restore();
   }
 
   function drawPlayer(dt){
     for(let i=0;i<TRAIL_MAX;i++){ const p=trail[i]; if(p.a<=0) continue; p.a-=dt*1.8; if(p.a<0) p.a=0; ctx.save(); ctx.globalAlpha=p.a*.7; const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r); g.addColorStop(0,'rgba(214,203,255,.9)'); g.addColorStop(1,'rgba(139,92,246,0)'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); ctx.restore(); }
-    ctx.save(); ctx.translate(player.x+player.w/2, player.y+player.h/2); ctx.rotate(player.rotation); ctx.shadowColor='rgba(139,92,246,.85)'; ctx.shadowBlur= player.airborne ? 34 : 18; const im=charImgs[chosenChar]; if(charReady[chosenChar]) ctx.drawImage(im,-player.w/2,-player.h/2,player.w,player.h); else { ctx.fillStyle='#d6cbff'; roundRect(ctx,-player.w/2,-player.h/2,player.w,player.h,14); ctx.fill(); } ctx.shadowBlur=0; ctx.restore();
+    ctx.save(); ctx.translate(player.x+player.w/2, player.y+player.h/2); ctx.rotate(player.rotation);
+    ctx.shadowColor='rgba(139,92,246,.85)'; ctx.shadowBlur= player.airborne ? 34*K : 18*K;
+    const im=charImgs[chosenChar]; if(charReady[chosenChar]) ctx.drawImage(im,-player.w/2,-player.h/2,player.w,player.h);
+    else { ctx.fillStyle='#d6cbff'; roundRect(ctx,-player.w/2,-player.h/2,player.w,player.h,14*K); ctx.fill(); }
+    ctx.shadowBlur=0; ctx.restore();
   }
-
-  function roundRect(ctx,x,y,w,h,r){ const rr=Math.min(r,w/2,h/2); ctx.beginPath(); ctx.moveTo(x+rr,y); ctx.arcTo(x+w,y,x+w,y+h,rr); ctx.arcTo(x+w,y+h,x,y+h,rr); ctx.arcTo(x,y+h,x,y,rr); ctx.arcTo(x,y,x+w,y,rr); ctx.closePath(); }
 
   function drawVictoryEffects(dt){
-    for(let i=0;i<FW_MAX;i++){ const p=fw[i]; if(p.a<=0) continue; p.life-=dt; p.a=clamp(p.life,0,1); p.vy+=80*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; ctx.save(); ctx.globalAlpha=p.a; ctx.fillStyle=`hsl(${p.hue} 100% 60%)`; ctx.beginPath(); ctx.arc(p.x,p.y,p.sz,0,Math.PI*2); ctx.fill(); ctx.restore(); }
-    for(let i=0;i<CF_MAX;i++){ const c=cf[i]; if(c.a<=0) continue; c.vy+=30*dt; c.x+=c.vx*dt; c.y+=c.vy*dt; c.rot+=c.rvel*dt; if(c.y>H+20){ c.a=0; continue; } ctx.save(); ctx.globalAlpha=.9; ctx.translate(c.x,c.y); ctx.rotate(c.rot); ctx.fillStyle=`hsl(${c.hue} 100% 60%)`; ctx.fillRect(-c.w/2,-c.h/2,c.w,c.h); ctx.restore(); }
+    for(let i=0;i<FW_MAX;i++){ const p=fw[i]; if(p.a<=0) continue; p.life-=dt; p.a=clamp(p.life,0,1); p.vy+=80*K*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; ctx.save(); ctx.globalAlpha=p.a; ctx.fillStyle=`hsl(${p.hue} 100% 60%)`; ctx.beginPath(); ctx.arc(p.x,p.y,p.sz,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    for(let i=0;i<CF_MAX;i++){ const c=cf[i]; if(c.a<=0) continue; c.vy+=30*K*dt; c.x+=c.vx*dt; c.y+=c.vy*dt; c.rot+=c.rvel*dt; if(c.y>H+20*K){ c.a=0; continue; } ctx.save(); ctx.globalAlpha=.9; ctx.translate(c.x,c.y); ctx.rotate(c.rot); ctx.fillStyle=`hsl(${c.hue} 100% 60%)`; ctx.fillRect(-c.w/2,-c.h/2,c.w,c.h); ctx.restore(); }
   }
 
-  function spawnFirework(){ const ex=rand(W*.15,W*.85), ey=rand(H*.15,H*.45); const count=SETTINGS.FWAVE.count|0; for(let i=0;i<count;i++){ const p=allocFW(); const a=(i/count)*Math.PI*2+rand(-.04,.04); const sp=rand(80, SETTINGS.FWAVE.power); p.x=ex; p.y=ey; p.vx=Math.cos(a)*sp; p.vy=Math.sin(a)*sp; p.life=rand(.8,1.6); p.hue=rndInt(0,360); p.sz=rand(1.5,3.6); p.a=1; } }
+  // Partículas helpers
+  function spawnFirework(){ const ex=rand(W*.15,W*.85), ey=rand(H*.15,H*.45); const count=SETTINGS.FWAVE.count|0; for(let i=0;i<count;i++){ const p=allocFW(); const a=(i/count)*Math.PI*2+rand(-.04,.04); const sp=rand(80*K, SETTINGS.FWAVE.power*K); p.x=ex; p.y=ey; p.vx=Math.cos(a)*sp; p.vy=Math.sin(a)*sp; p.life=rand(.8,1.6); p.hue=rndInt(0,360); p.sz=rand(1.5*K,3.6*K); p.a=1; } }
   function allocFW(){ for(let i=0;i<FW_MAX;i++) if(fw[i].a<=0) return fw[i]; return fw[0]; }
-  function spawnConfetti(dt){ let toSpawn=SETTINGS.CONFETTI.rate*dt; while(toSpawn>0){ const c=allocCF(); c.x=rand(40,W-40); c.y=-10; c.vy=rand(40,90); c.vx=rand(-20,20); c.rot=rand(0,Math.PI*2); c.rvel=rand(-2,2); c.w=rand(SETTINGS.CONFETTI.sizeMin, SETTINGS.CONFETTI.sizeMax); c.h=rand(SETTINGS.CONFETTI.sizeMin, SETTINGS.CONFETTI.sizeMax); c.hue=rndInt(0,360); c.a=1; toSpawn-=1; } }
+  function spawnConfetti(dt){ let toSpawn=SETTINGS.CONFETTI.rate*dt; while(toSpawn>0){ const c=allocCF(); c.x=rand(40,W-40); c.y=-10; c.vy=rand(40*K,90*K); c.vx=rand(-20*K,20*K); c.rot=rand(0,Math.PI*2); c.rvel=rand(-2,2); c.w=rand(SETTINGS.CONFETTI.sizeMin*K, SETTINGS.CONFETTI.sizeMax*K); c.h=rand(SETTINGS.CONFETTI.sizeMin*K, SETTINGS.CONFETTI.sizeMax*K); c.hue=rndInt(0,360); c.a=1; toSpawn-=1; } }
   function allocCF(){ for(let i=0;i<CF_MAX;i++) if(cf[i].a<=0) return cf[i]; return cf[0]; }
 
   // ====== LOOP ======
@@ -477,9 +481,9 @@
       keyJump=false;
     }
 
-    const shake=(shakeT>0)?SETTINGS.SHAKE_MAX*(shakeT):0; if(shakeT>0) shakeT=Math.max(0, shakeT-SETTINGS.SHAKE_DECAY*dt);
+    const shake=(shakeT>0)?SETTINGS.SHAKE_MAX*(shakeT)*K:0; if(shakeT>0) shakeT=Math.max(0, shakeT-SETTINGS.SHAKE_DECAY*dt);
     ctx.save(); if(shake>0) ctx.translate(rand(-shake,shake), rand(-shake,shake));
-    drawBackground(dt, distanceM*SETTINGS.PX_PER_M);
+    drawBackground(dt, distanceM*PX_PER_M);
     for(let i=0;i<OBS_MAX;i++) if(obs[i].active) drawObstacle(obs[i]);
     drawPlayer(dt); if(state===STATE.WIN||state===STATE.FINAL_WIN) drawVictoryEffects(dt);
     ctx.restore(); updateHUD(); requestAnimationFrame(loop);
@@ -506,19 +510,19 @@
     if(bufferT>0){ if(attemptJump()) bufferT=0; else bufferT-=dt; } else { bufferT-=dt; }
 
     if(player.airborne) coyoteT = Math.max(0, coyoteT - dt); else coyoteT = SETTINGS.COYOTE;
-    player.vy += SETTINGS.G*dt; player.y += player.vy*dt; const gy=SETTINGS.GROUND_Y-player.h;
+    player.vy += G*dt; player.y += player.vy*dt; const gy=groundY-player.h;
     if(player.y>=gy){ player.y=gy; player.vy=0; if(player.airborne){ coyoteT=SETTINGS.COYOTE; } player.airborne=false; airJumpsUsed=0; } else player.airborne=true;
 
-    if(player.airborne){ player.rotation += clamp(player.vy/900,-1.2,1.2)*dt*2.1; player.rotation = clamp(player.rotation,-0.6,0.6); } else { player.rotation *= Math.pow(0.001, dt); }
+    if(player.airborne){ player.rotation += clamp(player.vy/(900*K),-1.2,1.2)*dt*2.1; player.rotation = clamp(player.rotation,-0.6,0.6); } else { player.rotation *= Math.pow(0.001, dt); }
 
-    const dx=speedMS*dt*SETTINGS.PX_PER_M; for(let i=0;i<OBS_MAX;i++){ const o=obs[i]; if(!o.active) continue; o.x-=dx; if(o.type==='person' || o.type==='music'){ o.t+=dt*2; o.y = o.baseY + Math.sin(o.t) * o.amp; } if(o.x+o.w<-40) o.active=false; }
+    const dx=speedMS*dt*PX_PER_M; for(let i=0;i<OBS_MAX;i++){ const o=obs[i]; if(!o.active) continue; o.x-=dx; if(o.type==='person' || o.type==='music'){ o.t+=dt*2; o.y = o.baseY + Math.sin(o.t) * o.amp; } if(o.x+o.w<-40*K) o.active=false; }
 
-    trailTimer -= dt; if(trailTimer<=0){ const p=trail[trailIdx++%TRAIL_MAX]; p.x=player.x+player.w/2; p.y=player.y+player.h/2; p.a=1; p.r=rand(10,22); trailTimer=SETTINGS.TRAIL_INTERVAL; }
+    trailTimer -= dt; if(trailTimer<=0){ const p=trail[trailIdx++%TRAIL_MAX]; p.x=player.x+player.w/2; p.y=player.y+player.h/2; p.a=1; p.r=rand(10*K,22*K); trailTimer=SETTINGS.TRAIL_INTERVAL; }
 
     const px=player.x, py=player.y, pw=player.w, ph=player.h; for(let i=0;i<OBS_MAX;i++){
       const o=obs[i]; if(!o.active) continue; if(!aabb(px,py,pw,ph,o.x,o.y,o.w,o.h)) continue;
       if(o.type==='box'){
-        const tolerance = 10;
+        const tolerance = 10*K;
         if(prevY + ph <= o.y + tolerance && player.vy >= 0){ player.y = o.y - ph; player.vy = 0; player.airborne = false; airJumpsUsed=0; }
         else { state=STATE.DEAD; statusTag.textContent='DERROTA'; shakeT=1.0; showDeath(); break; }
       } else {
@@ -532,7 +536,7 @@
     }
   }
 
-  function jump(isAir=false){ player.vy=SETTINGS.JUMP_V; player.airborne=true; if(isAir){ shakeT=Math.max(shakeT,.18); } }
+  function jump(isAir=false){ player.vy=JUMP_V; player.airborne=true; if(isAir){ shakeT=Math.max(shakeT,.18); } }
 
   function updateHUD(){
     const pct=Math.floor(progress*100);
@@ -544,26 +548,15 @@
 
   function tinyShake(){ shakeT = Math.max(shakeT, .3); }
 
-  // ====== Resize/orientation handling ======
+  // Resize/orientation
   fitCanvas();
   window.addEventListener('resize', fitCanvas);
   (window.visualViewport||window).addEventListener?.('resize', fitCanvas);
-  window.addEventListener('orientationchange', ()=>{ setTimeout(fitCanvas, 250); });
+  window.addEventListener('orientationchange', ()=>{ setTimeout(fitCanvas, 250); reset(true); });
 
   // Inicio
   reset(true); requestAnimationFrame(loop);
 })();
 </script>
-
-<!--
-====================================
-   NOTAS CLAVE PARA MÓVIL
-====================================
-- Viewport: user-scalable=no + viewport-fit=cover para notch.
-- Layout: 100dvh y ajuste con visualViewport → nada se corta.
-- Canvas HiDPI: escalado con DPR para nitidez.
-- Entradas: Pointer Events, sin zoom por doble-tap.
-- Mantiene 16:9; en portrait se muestra con bandas (letterbox).
--->
 </body>
 </html>
