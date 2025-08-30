@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>¿Te atreves? – Disco Dash</title>
+<style>
+  /* ======== LAYOUT Y RESPONSIVE (16:9) ======== */
+  :root { --ui-bg: rgba(0,0,0,0.42); --ui-text:#fff; --accent:#8b5cf6; --accent2:#00ffd5; --danger:#ff4d6d; --gold:#ffd166; }
+  html, body { height:100%; margin:0; background:#05060c; color:var(--ui-text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, "Noto Sans", sans-serif; overflow:hidden; }
+  .root { width:100vw; height:100vh; display:grid; place-items:center; }
+  .game-wrap { position:relative; width:min(100vw, 100vh * 16 / 9); aspect-ratio:16/9; max-height:100vh; border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.65), inset 0 0 0 1px rgba(255,255,255,.06); }
+  canvas { width:100%; height:100%; display:block; background:transparent; touch-action:none; }
+
+  /* ======== HUD ======== */
+  .hud { position:absolute; left:12px; right:12px; top:10px; display:grid; grid-template-columns:1fr auto; gap:12px; pointer-events:none; }
+  .panel { background:var(--ui-bg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:8px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+  .progress { height:10px; border-radius:6px; overflow:hidden; position:relative; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); background: linear-gradient(90deg, rgba(255,255,255,.06), rgba(255,255,255,.02)); }
+  .progress > .bar { height:100%; width:0%; background: linear-gradient(90deg, #8b5cf6, #00ffd5 40%, #9bffd4 60%, #fffcc0 100%); box-shadow:0 0 18px #8b5cf6; }
+  .stats { font-size:14px; line-height:1.2; }
+  .stats b { color:#d6cbff; }
+  .status-tag { padding:4px 10px; border-radius:10px; font-weight:800; letter-spacing:.5px; font-size:12px; background: linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.15)); border:1px solid rgba(255,255,255,.08); }
+
+  /* ======== OVERLAYS (MENÚ / MENSAJES) ======== */
+  .overlay { position:absolute; inset:0; display:grid; place-items:center; text-align:center; padding:24px; pointer-events:none; }
+  .overlay .card { pointer-events:auto; padding:18px 22px; border-radius:14px; background: linear-gradient(180deg, rgba(0,0,0,.58), rgba(0,0,0,.32)); border:1px solid rgba(255,255,255,.08); box-shadow:0 24px 64px rgba(0,0,0,.55); max-width:min(92%, 1100px); }
+  .title { font-size:clamp(22px, 3.8vw, 44px); margin:8px 0 6px; font-weight:900; letter-spacing:.3px; }
+  .subtitle { font-size:clamp(14px, 2vw, 18px); opacity:.9; }
+  .big { font-size:clamp(22px, 4vw, 54px); font-weight:900; text-shadow:0 6px 30px rgba(0,0,0,.6); }
+  .btns { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:14px; }
+  .btn { cursor:pointer; background: linear-gradient(180deg, #1e293b, #0b1220); color:#dff9ff; border:1px solid rgba(255,255,255,.1); padding:12px 16px; border-radius:12px; font-weight:800; letter-spacing:.3px; box-shadow:0 10px 24px rgba(0,0,0,.4); transition: transform .06s ease, filter .15s ease; font-size:16px; }
+  .btn:hover { filter:brightness(1.1); }
+  .btn:active { transform: translateY(1px) scale(.995); }
+  .btn[disabled] { opacity:.6; cursor: not-allowed; }
+
+  /* Selección de personaje */
+  .chars { display:grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap:12px; margin-top:12px; }
+  .char { background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:6px; position:relative; }
+  .char img { width:100%; height:140px; object-fit:cover; border-radius:10px; display:block; }
+  .char:hover { outline:2px solid rgba(139,92,246,.45); }
+  .char.sel { outline:3px solid #8b5cf6; box-shadow:0 0 24px rgba(139,92,246,.35) inset; }
+
+  .emoji { display:inline-block; font-size: clamp(28px, 6vw, 72px); filter: drop-shadow(0 8px 24px rgba(139,92,246,.6)); animation: bob 1.6s ease-in-out infinite; }
+  @keyframes bob { 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-8px) rotate(-2deg);} }
+
+  .cover { display:block; width:min(86vw, 780px); max-height:48vh; object-fit:cover; border-radius:12px; box-shadow: 0 14px 40px rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.08); margin: 0 auto 8px; }
+  .victory-photo, .death-photo { display:block; width:min(86vw, 560px); max-height:40vh; object-fit:cover; border-radius:10px; margin: 8px auto 8px; box-shadow: 0 12px 32px rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.08); }
+</style>
+</head>
+<body>
+<div class="root">
+  <div class="game-wrap" aria-live="polite">
+    <canvas id="game" width="1280" height="720" aria-label="¿Te atreves? Juego rítmico de discoteca. Controles: toca para saltar (doble salto). R reinicia."></canvas>
+
+    <!-- HUD -->
+    <div class="hud" aria-hidden="true">
+      <div class="panel">
+        <div class="progress" title="Progreso nivel">
+          <div class="bar" id="progressBar"></div>
+        </div>
+        <div class="stats" id="stats"></div>
+      </div>
+      <div class="status-tag" id="statusTag">MENÚ</div>
+      <div class="status-tag" id="tripleBadge" style="display:none">TRIPLE SALTO</div>
+    </div>
+
+    <!-- Overlays -->
+    <div class="overlay" id="overlay" style="display:none">
+      <div class="card" id="overlayCard"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  /* ========================================================
+   *  ¿TE ATREVES? – Disco Dash (index único, sin dependencias externas)
+   *  Canvas 1280×720, 60 fps, controles: TOQUE (móvil) / Espacio/↑. R reinicia
+   *  Selección de 4 personajes (PNG) – el usuario solo juega
+   * ======================================================== */
+
+  /* =================== ASSETS / MARCA (SOLO DEV) =================== */
+  const BRAND = {
+    GAME_NAME: '¿Te atreves?',
+    // 4 PNG del personaje – se muestran para elegir
+    CHAR_URLS: [
+      'assets/char1.png',
+      'assets/char2.png',
+      'assets/char3.png',
+      'assets/char4.png'
+    ],
+    COVER_IMAGE_URL: 'assets/cover.png',   // Foto de inicio
+    WIN_IMAGE_URL:   'assets/win.png',     // Foto al ganar
+    // Escenas de derrota: frase + foto (pon aquí tus PNG por frase)
+    DEATH_SCENES: [
+      { text: 'Nos debes un cubata', img: 'assets/death.png' }
+    ],
+    COVER_EMOJI: '🕺',
+    WIN_MESSAGE_BASE: '¡Lo has petado! Nivel completado 🎉',
+    FINAL_OPTIONS: { a: 'Has ganado un chupito, paga Nete 🍹', b: 'Dale un beso a uno de los 4 😘' },
+    ENABLE_FINAL_MODE: true
+  };
+
+  /* ================= PARÁMETROS EDITABLES (TUNING) ================= */
+  const SETTINGS = {
+    // Mundo y físicas (amable y pasable en móvil)
+    CHAR_W: 110, CHAR_H: 110,
+    G: 2550, JUMP_V: -1220,
+    GROUND_Y: 608, PX_PER_M: 32,
+
+    // Doble salto
+    MAX_AIR_JUMPS: 1, // 1 salto adicional en el aire (total: 2)
+    MUSHROOMS_FOR_TRIPLE: 5,
+
+    // Nivel base
+    LEVEL_LEN: 2000, BASE_SPEED: 7.0, END_SPEED: 15.5, ACCEL_EASE: 1.6,
+
+    // Ritmo por tramo (BPM)
+    BPM_Q1: 96, BPM_Q2: 114, BPM_Q3: 132, BPM_Q4: 150,
+
+    // Calidad de control
+    COYOTE: 0.16,       // coyote más generoso
+    JUMP_BUFFER: 0.16,
+
+    // Efectos
+    TRAIL_SIZE: 32, TRAIL_INTERVAL: 0.034,
+    SHAKE_MAX: 8, SHAKE_DECAY: 3.6,
+
+    // Victoria
+    FWAVE: { spawnEvery: 0.60, power: 320, count: 55 },
+    CONFETTI: { rate: 36, sizeMin: 6, sizeMax: 14 },
+
+    // Juego Final (opcional)
+    FINAL_LEN: 800, FINAL_BPM: 164, FINAL_BASE_SPEED: 11.0, FINAL_END_SPEED: 16.5
+  };
+
+  const STATE = { MENU:0, PICK:1, PLAY:2, DEAD:3, WIN:4, FINAL:5, FINAL_WIN:6 };
+
+  // Utilidades
+  const clamp=(v,a,b)=>v<a?a:v>b?b:v; const lerp=(a,b,t)=>a+(b-a)*t; const easeOutPow=(t,p)=>1-Math.pow(1-t,p); const rand=(a,b)=>Math.random()*(b-a)+a; const rndInt=(a,b)=> (Math.random()*(b-a+1)+a)|0;
+
+  // Canvas
+  const canvas = document.getElementById('game'); const ctx = canvas.getContext('2d'); const W=canvas.width, H=canvas.height;
+
+  // UI
+  const overlay = document.getElementById('overlay'); const overlayCard = document.getElementById('overlayCard'); const progressBar=document.getElementById('progressBar'); const statsEl=document.getElementById('stats'); const statusTag=document.getElementById('statusTag');
+
+  // LocalStorage
+  const LS_REC='dd_record_v4', LS_WINS='dd_wins_v4'; let recordDistance=parseFloat(localStorage.getItem(LS_REC)||'0'); let wins=parseInt(localStorage.getItem(LS_WINS)||'0',10);
+
+  // Carga de 4 personajes
+  const charImgs = BRAND.CHAR_URLS.map(u=>{ const im=new Image(); im.src=u; return im; });
+  const charReady = [false,false,false,false]; charImgs.forEach((im,i)=>{ im.onload=()=>charReady[i]=true; });
+
+  // Estado jugador / mundo
+  const groundY = SETTINGS.GROUND_Y;
+  const player = { x: 260, y: groundY-SETTINGS.CHAR_H, w:SETTINGS.CHAR_W, h:SETTINGS.CHAR_H, vy:0, rotation:0, airborne:false };
+  let chosenChar = 0; // índice 0..3
+  let airJumpsUsed = 0; // doble salto
+  let mushrooms=0; let maxAirJumps=SETTINGS.MAX_AIR_JUMPS; let tripleUnlocked=false;
+
+  // Trail
+  const TRAIL_MAX=SETTINGS.TRAIL_SIZE|0; const trail=new Array(TRAIL_MAX); for(let i=0;i<TRAIL_MAX;i++) trail[i]={x:0,y:0,a:0,r:0}; let trailIdx=0, trailTimer=0;
+
+  // Obstáculos (discoteca)
+  const OBS_MAX=260; const obs=new Array(OBS_MAX); for(let i=0;i<OBS_MAX;i++) obs[i]={active:false,type:'glass',x:0,y:0,w:0,h:0,baseY:0,t:0,amp:0};
+
+  // Partículas victoria
+  const FW_MAX=600, CF_MAX=260; const fw=new Array(FW_MAX); for(let i=0;i<FW_MAX;i++) fw[i]={a:0,x:0,y:0,vx:0,vy:0,life:0,hue:0,sz:0}; const cf=new Array(CF_MAX); for(let i=0;i<CF_MAX;i++) cf[i]={a:0,x:0,y:0,vy:0,vx:0,rot:0,rvel:0,w:0,h:0,hue:0};
+
+  // Juego
+  let state=STATE.MENU, isFinal=false; let distanceM=0, speedMS=SETTINGS.BASE_SPEED, progress=0, shakeT=0; let lastTime=performance.now();
+
+  // Ritmo / patrones → tokens por beat (más huecos y plataformas)
+  let beatDur=60/SETTINGS.BPM_Q1; // s/beat
+  const TOK = { S:'S', D:'D', G:'G', B:'B', P:'P', M:'M', V:'V', X:'X', GAP:'_' }; // X = caja/plataforma
+  const PATTERNS = {
+    Q1: [ ['_','S','_','X'], ['H','_','_','_'], ['G','_','_','_'], ['_','B','_','_'], ['_','X','_','S'], ['P','_','_','_'] ],
+    Q2: [ ['S','_','S','_'], ['_','H','_','_'], ['D','_','_','X'], ['B','_','_','S'], ['P','_','S','_'], ['M','_','_','X'] ],
+    Q3: [ ['D','_','S','_'], ['_','_','H','_'], ['G','_','S','_'], ['P','_','S','_'], ['M','_','_','S'], ['V','_','_','X'] ],
+    Q4: [ ['S','_','S','X'], ['_','_','_','H'], ['D','_','M','_'], ['B','_','D','_'], ['P','_','S','_'], ['M','_','S','_'] ]
+  };
+  function bpmForProgress(p){ if(isFinal) return SETTINGS.FINAL_BPM; if(p<.25) return SETTINGS.BPM_Q1; if(p<.5) return SETTINGS.BPM_Q2; if(p<.75) return SETTINGS.BPM_Q3; return SETTINGS.BPM_Q4; }
+  function pickPattern(p){ const q=p<.25?'Q1':p<.5?'Q2':p<.75?'Q3':'Q4'; const list=PATTERNS[q]; return list[rndInt(0,list.length-1)].slice(); }
+  let tokenQueue=[]; let beatTimer=0;
+
+  // Entradas (toque = principal)
+  let keyJump=false, keyJumpHeld=false, keyR=false, pointerDown=false; let coyoteT=0, bufferT=0;
+  const onJumpPress=()=>{ keyJump=true; keyJumpHeld=true; bufferT=SETTINGS.JUMP_BUFFER; };
+  const onJumpRelease=()=>{ keyJumpHeld=false; };
+  window.addEventListener('keydown',e=>{ if(e.code==='Space'||e.code==='ArrowUp'){ e.preventDefault(); onJumpPress(); } else if(e.code==='KeyR'){ e.preventDefault(); keyR=true; } },{passive:false});
+  window.addEventListener('keyup',e=>{ if(e.code==='Space'||e.code==='ArrowUp') onJumpRelease(); });
+  canvas.addEventListener('mousedown',()=>{ pointerDown=true; onJumpPress(); });
+  canvas.addEventListener('mouseup',()=>{ pointerDown=false; onJumpRelease(); });
+  canvas.addEventListener('touchstart',e=>{ e.preventDefault(); pointerDown=true; onJumpPress(); },{passive:false});
+  canvas.addEventListener('touchend',()=>{ pointerDown=false; onJumpRelease(); });
+
+  function reset(toMenu=true){ mushrooms=0; tripleUnlocked=false; maxAirJumps=SETTINGS.MAX_AIR_JUMPS; const _b=document.getElementById("tripleBadge"); if(_b) _b.style.display="none"; state=toMenu?STATE.MENU:STATE.PLAY; isFinal=false; distanceM=0; speedMS=SETTINGS.BASE_SPEED; progress=0; shakeT=0; tokenQueue.length=0; beatDur=60/bpmForProgress(0); beatTimer=beatDur; coyoteT=0; bufferT=0; airJumpsUsed=0; player.x=260; player.y=groundY-SETTINGS.CHAR_H; player.w=SETTINGS.CHAR_W; player.h=SETTINGS.CHAR_H; player.vy=0; player.rotation=0; player.airborne=false; for(let i=0;i<TRAIL_MAX;i++) trail[i].a=0; for(let i=0;i<OBS_MAX;i++) obs[i].active=false; for(let i=0;i<FW_MAX;i++) fw[i].a=0; for(let i=0;i<CF_MAX;i++) cf[i].a=0; statusTag.textContent='MENÚ'; showMenu(); }
+  function resetFinal(){ mushrooms=0; tripleUnlocked=false; maxAirJumps=SETTINGS.MAX_AIR_JUMPS; const _b=document.getElementById("tripleBadge"); if(_b) _b.style.display="none"; state=STATE.FINAL; isFinal=true; distanceM=0; progress=0; tokenQueue.length=0; beatDur=60/SETTINGS.FINAL_BPM; beatTimer=beatDur; speedMS=SETTINGS.FINAL_BASE_SPEED; airJumpsUsed=0; for(let i=0;i<OBS_MAX;i++) obs[i].active=false; hideOverlay(); statusTag.textContent='FINAL'; }
+
+  // ====== UI ======
+  function showOverlay(html){ overlayCard.innerHTML=html; overlay.style.display=''; }
+  function hideOverlay(){ overlay.style.display='none'; }
+
+  function showMenu(){
+    const cover = BRAND.COVER_IMAGE_URL ? `<img class="cover" src="${BRAND.COVER_IMAGE_URL}" alt="Portada" />` : '';
+    showOverlay(`
+      <div>
+        ${cover}
+        <div class="emoji">${BRAND.COVER_EMOJI}</div>
+        <div class="title" style="color:#d6cbff; text-shadow:0 0 28px rgba(139,92,246,.5)">${BRAND.GAME_NAME}</div>
+        <div class="subtitle">Toca la pantalla para <b>JUGAR</b>. En partida: <b>tap = salto</b>, <b>doble tap = doble salto</b>. (Tecla <b>R</b> reinicia)</div>
+        <div class="btns"><button class="btn" id="btnPlay">JUGAR</button></div>
+      </div>`);
+    document.getElementById('btnPlay').onclick=()=> showPick();
+  }
+
+  function showPick(){
+    const grid = BRAND.CHAR_URLS.map((u,i)=>`<div class="char" data-i="${i}"><img src="${u}" alt="personaje ${i+1}"></div>`).join('');
+    showOverlay(`
+      <div>
+        <div class="title">Elige tu personaje</div>
+        <div class="chars" id="chars">${grid}</div>
+        <div class="subtitle">Consejo: el salto tiene <b>doble toque</b> y tiempo coyote.</div>
+        <div class="btns"><button class="btn" id="btnStart" disabled>Empezar</button></div>
+      </div>`);
+    statusTag.textContent='SELECCIÓN';
+    const chars=document.querySelectorAll('.char'); let sel=-1; chars.forEach(el=>{
+      el.onclick=()=>{ chars.forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); sel=parseInt(el.dataset.i,10); chosenChar=sel; document.getElementById('btnStart').disabled=false; };
+    });
+    document.getElementById('btnStart').onclick=()=>{ hideOverlay(); state=STATE.PLAY; statusTag.textContent='JUGANDO'; };
+  }
+
+  function showDeath(){
+    const dist=Math.floor(distanceM); const newRec=dist>recordDistance; if(newRec){ recordDistance=dist; localStorage.setItem(LS_REC,String(recordDistance)); }
+    const sc = BRAND.DEATH_SCENES[rndInt(0, BRAND.DEATH_SCENES.length-1)];
+    const img = sc.img ? `<img class="death-photo" src="${sc.img}" alt="Derrota">` : '';
+    showOverlay(`
+      <div>
+        ${img}
+        <div class="big" style="color:var(--danger)">${sc.text}</div>
+        <div class="subtitle" style="margin-bottom:8px">Pulsa R para reiniciar</div>
+        <div class="subtitle">Di <b>"TA LINDA AAAAAAAAH"</b> si quieres reintentarlo.</div>
+        <div class="btns"><button class="btn" id="btnRestart">Volver a intentar</button></div>
+      </div>`);
+    document.getElementById('btnRestart').onclick=()=>{ doRestart(); };
+  }
+
+  function showWin(){
+    wins+=1; localStorage.setItem(LS_WINS,String(wins));
+    const img = BRAND.WIN_IMAGE_URL ? `<img class="victory-photo" src="${BRAND.WIN_IMAGE_URL}" alt="Victoria">` : '';
+    showOverlay(`
+      <div>
+        ${img}
+        <canvas id="coin" width="240" height="240" style="display:block;margin:0 auto 8px;">Moneda</canvas>
+        <div class="big" style="color:var(--gold)">${BRAND.WIN_MESSAGE_BASE}</div>
+        <div class="btns">
+          <button class="btn" id="btnAgain">Volver a jugar</button>
+          ${BRAND.ENABLE_FINAL_MODE?'<button class="btn" id="btnFinal">Juego Final</button>':''}
+        </div>
+        <div class="btns" style="margin-top:6px">
+          <button class="btn" id="optA">${BRAND.FINAL_OPTIONS.a}</button>
+          <button class="btn" id="optB">${BRAND.FINAL_OPTIONS.b}</button>
+        </div>
+      </div>`);
+    drawCoin(document.getElementById('coin'));
+    document.getElementById('btnAgain').onclick=()=>doRestart();
+    if(BRAND.ENABLE_FINAL_MODE) document.getElementById('btnFinal').onclick=()=>startFinal();
+    document.getElementById('optA').onclick=()=>tinyShake();
+    document.getElementById('optB').onclick=()=>tinyShake();
+  }
+
+  function showFinalWin(){
+    wins+=1; localStorage.setItem(LS_WINS,String(wins));
+    showOverlay(`
+      <div>
+        <div class="big" style="color:var(--gold)">🏆 ¡Dominaste la pista!</div>
+        <div class="btns">
+          <button class="btn" id="btnPlayBase">Nivel base</button>
+          <button class="btn" id="btnPlayFinal">Repetir Final</button>
+        </div>
+      </div>`);
+    document.getElementById('btnPlayBase').onclick=()=>doRestart();
+    document.getElementById('btnPlayFinal').onclick=()=>startFinal();
+  }
+
+  function doRestart(){ hideOverlay(); reset(true); }
+  function startFinal(){ resetFinal(); }
+
+  // ====== Coin draw / flip ======
+  function drawCoin(canvasEl){
+    const c=canvasEl.getContext('2d'); const W=canvasEl.width, H=canvasEl.height; let t=0; let face = rndInt(0,3);
+    const render=()=>{ const dt=1/60; t+=dt; c.clearRect(0,0,W,H); c.save(); c.translate(W/2,H/2); const flip=Math.abs(Math.cos(t*4)); const sx=lerp(.15,1,flip); c.scale(sx,1);
+      const r=100; const grad=c.createRadialGradient(0,0,10,0,0,r); grad.addColorStop(0,'#fff1'); grad.addColorStop(1,'#f6c55a'); c.fillStyle=grad; c.beginPath(); c.arc(0,0,r,0,Math.PI*2); c.fill(); c.lineWidth=6; c.strokeStyle='rgba(0,0,0,.25)'; c.stroke();
+      c.save(); c.beginPath(); c.arc(0,0,r-16,0,Math.PI*2); c.clip(); if(charReady[face]) c.drawImage(charImgs[face],-r,-r,2*r,2*r); else { c.fillStyle='#fff2'; c.fillRect(-r,-r,2*r,2*r); } c.restore(); c.restore(); requestAnimationFrame(render); };
+    canvasEl.addEventListener('click',()=>{ t+=.8; });
+    render();
+  }
+
+  // ====== Spawner por BEATS (cola de tokens) ======
+  function nextToken(p){ if(tokenQueue.length===0){ tokenQueue = pickPattern(p); } return tokenQueue.shift(); }
+
+  function spawnFromToken(tok){ const gx=W+20, gy=groundY; switch(tok){
+    case 'S': makeGlass(gx, gy, 56, 92); break;                  // vaso bajo
+    case 'D': makeGlass(gx, gy, 56, 92); makeGlass(gx+120, gy, 56, 96); break; // doble vaso
+    case 'G': makeHighGlass(gx, gy); break;                       // vaso alto
+    case 'B': makeBottle(gx, gy); break;                          // botella
+    case 'P': makePerson(gx, gy); break;                          // persona móvil
+    case 'M': makeSpeakerWave(gx, gy); break;                     // altavoz/música senoidal
+    case 'V': makeRope(gx, gy); break;                            // cuerda VIP
+    case 'X': makeBox(gx, gy); break;                             // caja/plataforma (se puede pisar)
+    case 'H': makeMushroom(gx, gy); break;
+    default: break; // '_' gap
+  }}
+
+  // ====== Obstáculos helpers ======
+  function allocObs(){ for(let i=0;i<OBS_MAX;i++) if(!obs[i].active) return obs[i]; return obs[0]; }
+  function makeGlass(x,gy,w=56,h=92){ const o=allocObs(); o.type='glass'; o.active=true; o.x=x; o.w=w; o.h=h; o.y=gy-h; o.baseY=o.y; }
+  function makeHighGlass(x,gy){ makeGlass(x,gy,64,112); }
+  function makeBottle(x,gy){ const o=allocObs(); o.type='bottle'; o.active=true; o.x=x; o.w=50; o.h=150; o.y=gy-o.h; o.baseY=o.y; }
+  function makePerson(x,gy){ const o=allocObs(); o.type='person'; o.active=true; o.x=x; o.w=66; o.h=126; o.baseY=gy-o.h-28; o.y=o.baseY; o.amp=28; o.t=rand(0,Math.PI*2); }
+  function makeSpeakerWave(x,gy){ const o=allocObs(); o.type='music'; o.active=true; o.x=x; o.w=70; o.h=110; o.baseY=gy-o.h-40; o.y=o.baseY; o.amp=38; o.t=rand(0,Math.PI*2); }
+  function makeRope(x,gy){ const o=allocObs(); o.type='rope'; o.active=true; o.x=x; o.w=120; o.h=44; o.y=gy-o.h; }
+  function makeBox(x,gy){ const o=allocObs(); o.type='box'; o.active=true; o.x=x; o.w=120; o.h=70; o.y=gy-o.h-26; o.baseY=o.y; } // caja elevada
+  function makeMushroom(x,gy){ const o=allocObs(); o.type='mushroom'; o.active=true; o.w=40; o.h=40; o.x=x; o.y=gy-o.h; }
+
+  // ====== Colisiones ======
+  const aabb=(px,py,pw,ph,ox,oy,ow,oh)=> (px<ox+ow && px+pw>ox && py<oy+oh && py+ph>oy);
+
+  // ====== DIBUJO ======
+  function drawBackground(dt,camX){
+    // degradiente animado (disco)
+    const t=performance.now()/1000; const c1=`hsl(${(t*40)%360} 80% 10%)`; const c2=`hsl(${(t*40+120)%360} 80% 8%)`; const c3=`hsl(${(t*40+240)%360} 80% 6%)`;
+    const sky=ctx.createLinearGradient(0,0,0,H); sky.addColorStop(0,c1); sky.addColorStop(.5,c2); sky.addColorStop(1,c3); ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+    // láseres verticales
+    ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.globalAlpha=.25; for(let i=0;i<6;i++){ const y=(Math.sin(t*1.2+i)*.5+.5)*H*.6+H*.1; ctx.fillStyle=`hsl(${(i*60+t*120)%360} 100% 60% / .6)`; ctx.fillRect((i/6)*W, y, W/6, 6); } ctx.restore();
+    // grid parallax
+    const step=64; const scroll=(camX*.2)%step; ctx.save(); ctx.globalAlpha=.22; ctx.strokeStyle='rgba(214,203,255,.18)'; ctx.lineWidth=1; ctx.translate(-scroll,0); for(let x=0;x<W+step;x+=step){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); } for(let y=0;y<H;y+=step){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); } ctx.restore();
+    // suelo
+    const gy=groundY; const glow=ctx.createLinearGradient(0,gy-38,0,gy+12); glow.addColorStop(0,'rgba(139,92,246,.22)'); glow.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=glow; ctx.fillRect(0,gy-38,W,50); ctx.fillStyle='#0a0f1a'; ctx.fillRect(0,gy,W,H-gy); ctx.fillStyle='#131b2a'; ctx.fillRect(0,gy-12,W,12);
+  }
+
+  function drawObstacle(o){
+    ctx.save(); ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=18; let grad=ctx.createLinearGradient(o.x,o.y,o.x,o.y+o.h); grad.addColorStop(0,'#8b5cf6'); grad.addColorStop(1,'#00ffd5'); ctx.fillStyle=grad; ctx.strokeStyle='rgba(255,255,255,.15)';
+    if(o.type==='glass'){ // triángulo (vaso)
+      ctx.beginPath(); ctx.moveTo(o.x, o.y+o.h); ctx.lineTo(o.x+o.w/2, o.y); ctx.lineTo(o.x+o.w, o.y+o.h); ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else if(o.type==='bottle'){ // botella
+      const neckH=20; ctx.fillRect(o.x+o.w*.35, o.y-neckH, o.w*.3, neckH); ctx.fillRect(o.x, o.y, o.w, o.h); ctx.strokeRect(o.x+.5, o.y+.5, o.w-1, o.h-1);
+    } else if(o.type==='person'){ // silueta simple
+      const r=o.w*.34; ctx.beginPath(); ctx.arc(o.x+o.w/2, o.y+r, r, 0, Math.PI*2); ctx.fill(); ctx.fillRect(o.x+o.w*.28, o.y+r*2, o.w*.44, o.h-r*2);
+    } else if(o.type==='music'){ // altavoz
+      ctx.fillRect(o.x, o.y, o.w, o.h); for(let i=0;i<6;i++){ ctx.fillRect(o.x+i*10, o.y-10, 6, 10); }
+    } else if(o.type==='rope'){ // cuerda VIP
+      ctx.fillRect(o.x, o.y+o.h-12, o.w, 12); ctx.beginPath(); ctx.moveTo(o.x+12,o.y+o.h-12); ctx.lineTo(o.x+12,o.y); ctx.moveTo(o.x+o.w-12,o.y+o.h-12); ctx.lineTo(o.x+o.w-12,o.y); ctx.lineWidth=6; ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.stroke();
+    } else if(o.type==='box'){ // caja/plataforma (pisable)
+      const r=12; roundRect(ctx, o.x, o.y, o.w, o.h, r); ctx.fill(); ctx.stroke();
+    } else { state=STATE.DEAD; statusTag.textContent='DERROTA'; shakeT=1.0; showDeath(); break; }
+      } else if(o.type==='mushroom'){ 
+        // recoger seta
+        o.active=false; mushrooms++;
+        if(!tripleUnlocked && mushrooms>=SETTINGS.MUSHROOMS_FOR_TRIPLE){ 
+          tripleUnlocked=true; maxAirJumps=2; 
+          const b=document.getElementById('tripleBadge'); if(b) b.style.display='block';
+        }
+      } else { state=STATE.DEAD; statusTag.textContent='DERROTA'; shakeT=1.0; showDeath(); break; }
+    }
+
+    // Victoria
+    if(progress>=1){ if(!isFinal){ state=STATE.WIN; statusTag.textContent='VICTORIA'; showWin(); } else { state=STATE.FINAL_WIN; statusTag.textContent='VICTORIA'; showFinalWin(); } }
+  }
+
+  function jump(isAir=false){ player.vy=SETTINGS.JUMP_V; player.airborne=true; if(isAir){ // pequeño destello extra en doble salto
+      shakeT=Math.max(shakeT,.18); }
+  }
+
+  function updateHUD(){ const pct=Math.floor(progress*100); progressBar.style.width=pct+'%'; const dist=Math.floor(distanceM); const rec=Math.floor(Math.max(recordDistance,dist)); statsEl.innerHTML = `Distancia: <b>${dist} m</b> · Récord: <b>${rec} m</b> · Ganadas: <b>${wins}</b> · 🍄: <b>${mushrooms}</b> · Triple: <b>${tripleUnlocked?"ON":"OFF"}</b>`; }
+
+  function tinyShake(){ shakeT = Math.max(shakeT, .3); }
+
+  // Inicio
+  reset(true); requestAnimationFrame(loop);
+})();
+</script>
+
+<!--
+====================================
+   PARÁMETROS EDITABLES (GUÍA RÁPIDA)
+====================================
+
+1) Branding / imágenes (solo dev; el jugador no cambia nada)
+   - BRAND.CHAR_URLS: 4 PNG del personaje a elegir.
+   - BRAND.COVER_IMAGE_URL: Foto de inicio.
+   - BRAND.WIN_IMAGE_URL:   Foto al ganar.
+   - BRAND.DEATH_SCENES:    Array de objetos { text, img } (4 frases y su foto).
+
+2) Físicas y dificultad (móvil)
+   - LEVEL_LEN 2000 m; velocidad 7.0 → 15.5 m/s; BPM 96/114/132/150.
+   - COYOTE 0.16s, JUMP_BUFFER 0.16s.
+   - Doble salto: MAX_AIR_JUMPS = 1 (total 2 saltos); aterrizar en cajas (X).
+
+3) Juego Final (si ENABLE_FINAL_MODE=true):
+   - FINAL_LEN 800 m, FINAL_BPM 164, velocidades 11.0 → 16.5.
+
+4) Obstáculos de discoteca (AABB): vaso (S), doble (D), vaso alto (G), botella (B),
+   persona móvil (P), altavoz/música (M), cuerda VIP (V) y caja/plataforma (X).
+
+5) Estética: fondo discoteca (degradiente animado + láseres), grid parallax, glow,
+   trail brillante, sombras/gradientes, confeti y fuegos al ganar.
+
+6) Controles: TOQUE (tap/double tap) para saltar; también Space/↑. R reinicia.
+-->
+</body>
+</html>
+
